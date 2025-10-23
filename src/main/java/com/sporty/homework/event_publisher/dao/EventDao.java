@@ -9,10 +9,10 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 
 public interface EventDao {
 
-    @SqlUpdate("INSERT INTO event (event_id, status) VALUES (:eventId, :status)")
+    @SqlUpdate("INSERT INTO event (event_id, event_status) VALUES (:eventId, :status)")
     void insertEvent(@Bind("eventId") String eventId, @Bind("status") String status);
 
-    @SqlUpdate("UPDATE event SET status = :status WHERE event_id = :eventId")
+    @SqlUpdate("UPDATE event SET event_status = :status WHERE event_id = :eventId")
     void updateEventStatus(@Bind("eventId") String eventId, @Bind("status") String status);
 
     @SqlQuery("SELECT * FROM event WHERE event_id = :eventId")
