@@ -1,6 +1,7 @@
 package com.sporty.homework.event_publisher.scheduler;
 
 import com.sporty.homework.event_publisher.dto.SoccerScoreDto;
+import com.sporty.homework.event_publisher.service.KafkaProducerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +25,14 @@ public class ScheduledJobService {
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
     private final TaskScheduler taskScheduler;
     private final RestTemplate restTemplate = new RestTemplate();
+    private final KafkaProducerService kafkaProducerService;
     private static final String THREAD_NAME_PREFIX = "event-job-";
 
     @Value("${score.endpoint.url:http://localhost:8081}")
     private String baseUrl;
 
-    public ScheduledJobService() {
+    public ScheduledJobService(KafkaProducerService kafkaProducerService) {
+        this.kafkaProducerService = kafkaProducerService;
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(10);
         scheduler.setThreadNamePrefix(THREAD_NAME_PREFIX);
@@ -52,6 +55,9 @@ public class ScheduledJobService {
                 if (scoreDto != null) {
                     log.info("Score update for event {}: Event ID: {}, Current Score: {}", 
                         eventId, scoreDto.eventId(), scoreDto.currentScore());
+                    
+                    // Send the score to Kafka topic
+                    kafkaProducerService.sendEventScore(scoreDto.eventId(), scoreDto.currentScore());
                 } else {
                     log.info("Received null response for event: {}", eventId);
                 }
@@ -65,7 +71,7 @@ public class ScheduledJobService {
         ScheduledFuture<?> scheduledTask = taskScheduler.scheduleAtFixedRate(
             task,
             Instant.now().plusSeconds(1), // Start after 1 second
-                Duration.ofDays(10000) // Every 10 seconds
+            Duration.ofMillis(10000) // Every 10 seconds
         );
 
         scheduledTasks.put(eventId, scheduledTask);

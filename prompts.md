@@ -26,5 +26,13 @@ when the update event endpoint is called, if the status is set to live we need
 to schedule a job that will query the node server score endpoint every 10 seconds.
 create a score service that will call the node server every 10 seconds and for now just log the results.
 use a spring thread pool task scheduler to schedule task which will do fetching and logging of the score.
-scheduled task should be stored in a conncurent hash map where key is event id and value is the scheduled future
+scheduled task should be stored in a concurrent hash map where key is event id and value is the scheduled future
 make sure to also cancel the job when an event is updated to status not live, and on application shutdown.
+
+now lets add kafka and zookeeper components to out docker compose in ci. create a kafka producer service to send
+messages fetched from the node server to a kafka topic called event-scores but make it configurable.
+the producer should be injected into the scheduled job service and the message should be sent to kafka once
+the score is fetched from the score service
+
+view kafka recieved messages:
+kcat -b localhost:9092 -t event-scores -C
