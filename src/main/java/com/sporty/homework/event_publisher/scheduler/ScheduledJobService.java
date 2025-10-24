@@ -1,7 +1,7 @@
 package com.sporty.homework.event_publisher.scheduler;
 
 import com.sporty.homework.event_publisher.dto.SoccerScoreDto;
-import com.sporty.homework.event_publisher.service.KafkaProducerService;
+import com.sporty.homework.event_publisher.service.OutboxService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -25,14 +25,14 @@ public class ScheduledJobService {
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
     private final TaskScheduler taskScheduler;
     private final RestTemplate restTemplate = new RestTemplate();
-    private final KafkaProducerService kafkaProducerService;
+    private final OutboxService outboxService;
     private static final String THREAD_NAME_PREFIX = "event-job-";
 
     @Value("${score.endpoint.url:http://localhost:8081}")
     private String baseUrl;
 
-    public ScheduledJobService(KafkaProducerService kafkaProducerService) {
-        this.kafkaProducerService = kafkaProducerService;
+    public ScheduledJobService(OutboxService outboxService) {
+        this.outboxService = outboxService;
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(10);
         scheduler.setThreadNamePrefix(THREAD_NAME_PREFIX);
@@ -56,8 +56,8 @@ public class ScheduledJobService {
                     log.info("Score update for event {}: Event ID: {}, Current Score: {}", 
                         eventId, scoreDto.eventId(), scoreDto.currentScore());
                     
-                    // Send the score to Kafka topic
-                    kafkaProducerService.sendEventScore(scoreDto.eventId(), scoreDto.currentScore());
+                    // Send the score to Kafka using outbox pattern
+                    outboxService.saveMessageAndSendToKafka(scoreDto.eventId(), scoreDto.currentScore());
                 } else {
                     log.info("Received null response for event: {}", eventId);
                 }

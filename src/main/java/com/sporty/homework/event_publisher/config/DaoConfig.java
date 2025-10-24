@@ -1,6 +1,7 @@
 package com.sporty.homework.event_publisher.config;
 
 import com.sporty.homework.event_publisher.dao.EventDao;
+import com.sporty.homework.event_publisher.dao.MessageDao;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.springframework.context.annotation.Bean;
@@ -21,5 +22,10 @@ public class DaoConfig {
     @Bean
     public EventDao eventDao(Jdbi jdbi) {
         return jdbi.onDemand(EventDao.class);
+    }
+
+    @Bean
+    public MessageDao messageDao(Jdbi jdbi) {
+        return jdbi.onDemand(MessageDao.class);
     }
 }

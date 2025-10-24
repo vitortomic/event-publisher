@@ -1,0 +1,118 @@
+package com.sporty.homework.event_publisher.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sporty.homework.event_publisher.dao.MessageDao;
+import com.sporty.homework.event_publisher.dto.EventScoreMessageDto;
+import com.sporty.homework.event_publisher.model.Message;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class OutboxService {
+
+    private final MessageDao messageDao;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${kafka.topic.event-scores:event-scores}")
+    private String eventScoresTopic;
+
+    @Transactional
+    public void saveMessageAndSendToKafka(String eventId, String currentScore) {
+        try {
+            // Create the message to be stored in the outbox
+            EventScoreMessageDto eventScoreMessage = new EventScoreMessageDto(eventId, currentScore);
+            String payload = objectMapper.writeValueAsString(eventScoreMessage);
+
+            // Create and save the outbox message
+            Message outboxMessage = new Message();
+            outboxMessage.setEventType("EVENT_SCORE_UPDATE");
+            outboxMessage.setPayload(payload);
+            outboxMessage.setStatus("PENDING");
+            outboxMessage.setCreatedAt(LocalDateTime.now());
+            outboxMessage.setRetryCount(0);
+
+            messageDao.insertMessage(outboxMessage);
+            log.info("Saved message to outbox for event: {}", payload);
+
+            // Attempt to send to Kafka and update status
+            if (sendMessageToKafka(eventId, payload, outboxMessage.getId())) {
+                messageDao.updateMessageStatus(outboxMessage.getId(), "SENT", LocalDateTime.now());
+                log.info("Successfully sent message to Kafka and updated status for event: {}", payload);
+            } else {
+                messageDao.markMessageAsFailed(outboxMessage.getId(), "FAILED", LocalDateTime.now());
+                log.error("Failed to send message to Kafka for event: {}, saved to outbox for retry", payload);
+            }
+        } catch (Exception e) {
+            log.error("Error in outbox pattern for event: {}", eventId, e);
+        }
+    }
+
+    private boolean sendMessageToKafka(String eventId, String payload, Long messageId) {
+        try {
+            // Send message to Kafka and wait for the result with timeout to ensure delivery
+            var sendResult = kafkaTemplate.send(eventScoresTopic, eventId, payload).get(5, java.util.concurrent.TimeUnit.SECONDS);
+            return sendResult.getRecordMetadata() != null;
+        } catch (java.util.concurrent.TimeoutException e) {
+            log.error("Timeout sending message to Kafka for message ID: {}", messageId, e);
+            return false;
+        } catch (ExecutionException e) {
+            log.error("Failed to send message to Kafka for message ID: {}", messageId, e.getCause());
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to send message to Kafka for message ID: {}", messageId, e);
+            return false;
+        }
+    }
+
+    public void processPendingMessages() {
+        // Process pending messages
+        List<Message> pendingMessages = messageDao.findPendingMessages(100);
+        for (Message message : pendingMessages) {
+            processMessage(message);
+        }
+
+        // Process failed messages (with retry logic)
+        List<Message> failedMessages = messageDao.findFailedMessages(100);
+        for (Message message : failedMessages) {
+            processMessage(message);
+        }
+    }
+
+    private void processMessage(Message message) {
+        try {
+            if (sendMessageToKafka(extractEventId(message.getPayload()), message.getPayload(), message.getId())) {
+                messageDao.updateMessageStatus(message.getId(), "SENT", LocalDateTime.now());
+                log.info("Successfully sent previously failed message to Kafka with ID: {}", message.getId());
+            } else {
+                // Update retry count and status
+                messageDao.markMessageAsFailed(message.getId(), "FAILED", LocalDateTime.now());
+                log.warn("Failed to send message to Kafka after retry, ID: {}", message.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error processing message with ID: {}", message.getId(), e);
+        }
+    }
+
+    private String extractEventId(String payload) {
+        try {
+            // Parse the JSON payload to extract the event ID
+            EventScoreMessageDto eventScoreMessage = objectMapper.readValue(payload, EventScoreMessageDto.class);
+            return eventScoreMessage.getEventId();
+        } catch (Exception e) {
+            log.error("Failed to extract event ID from payload", e);
+            return null;
+        }
+    }
+}
