@@ -44,7 +44,7 @@ fi
 echo "All dependencies are installed."
 
 # Navigate to the event-publisher directory (assuming that's where docker-compose.yml is)
-EVENT_PUBLISHER_DIR="/Users/jelena/Desktop/projects/event-publisher/event-publisher"
+EVENT_PUBLISHER_DIR="../"
 
 if [ ! -d "$EVENT_PUBLISHER_DIR" ]; then
     echo "Error: Directory $EVENT_PUBLISHER_DIR does not exist."
@@ -62,7 +62,7 @@ echo "Waiting for Kafka to start up..."
 sleep 10
 
 # Navigate to the soccer server directory and start it
-SOCCER_SERVER_DIR="/Users/jelena/Desktop/projects/soccer-server"
+SOCCER_SERVER_DIR="../soccer-server"
 
 if [ ! -d "$SOCCER_SERVER_DIR" ]; then
     echo "Error: Directory $SOCCER_SERVER_DIR does not exist."
