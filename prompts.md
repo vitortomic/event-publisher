@@ -36,3 +36,7 @@ the score is fetched from the score service
 
 view kafka recieved messages:
 kcat -b localhost:9092 -t event-scores -C
+
+ok the next step is writing some tests, lets start with unit tests where applicable.
+mind that unit tests should just test the logic, shouldn not depend on real database
+and kafka
