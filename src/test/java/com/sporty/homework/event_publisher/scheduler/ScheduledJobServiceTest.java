@@ -1,7 +1,7 @@
 package com.sporty.homework.event_publisher.scheduler;
 
 import com.sporty.homework.event_publisher.dto.SoccerScoreDto;
-import com.sporty.homework.event_publisher.service.KafkaProducerService;
+import com.sporty.homework.event_publisher.service.OutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,13 +23,13 @@ import static org.mockito.Mockito.*;
 class ScheduledJobServiceTest {
 
     @Mock
-    private KafkaProducerService kafkaProducerService;
+    private OutboxService outboxService;
 
     private ScheduledJobService scheduledJobService;
 
     @BeforeEach
     void setUp() {
-        scheduledJobService = new ScheduledJobService(kafkaProducerService);
+        scheduledJobService = new ScheduledJobService(outboxService);
     }
 
     @Test
@@ -67,7 +67,7 @@ class ScheduledJobServiceTest {
     }
 
     @Test
-    void shouldCallExternalEndpointAndSendToKafka() {
+    void shouldCallExternalEndpointAndSendToOutbox() {
         // This test would require more complex setup to test the actual scheduled task
         // Since the scheduled task runs based on fixed rate, we can't directly test 
         // the scheduled execution in a unit test without mocking the scheduler
