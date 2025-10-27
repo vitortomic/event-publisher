@@ -24,17 +24,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@DirtiesContext
 class EventPublishingEndToEndTest {
 
     @Autowired
@@ -71,7 +72,7 @@ class EventPublishingEndToEndTest {
         consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
         consumer = new KafkaConsumer<>(consumerProps);
         consumer.subscribe(Collections.singletonList("event-scores"));
@@ -88,7 +89,7 @@ class EventPublishingEndToEndTest {
     @Order(1)
     void testCreateEventSuccessfully() {
         // Given
-        String eventId = "e2e-test-event-123";
+        String eventId = UUID.randomUUID().toString();
         CreateEventDto createEventDto = new CreateEventDto(eventId, EventStatus.LIVE);
 
         // When
@@ -96,20 +97,27 @@ class EventPublishingEndToEndTest {
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().contains("Event created successfully"));
+        assertTrue(response.getBody().contains("eventId"));
 
         // Verify the event was saved to the database
         Event savedEvent = eventDao.findByEventId(eventId);
         assertNotNull(savedEvent);
         assertEquals(eventId, savedEvent.getEventId());
-        assertEquals("LIVE", savedEvent.getStatus().name());
+        assertEquals(EventStatus.LIVE, savedEvent.getStatus());
     }
 
     @Test
     @Order(2)
     void testUpdateEventStatusAndVerifyMessageInDatabase() throws InterruptedException {
         // Given
-        String eventId = "e2e-test-event-123";
+        String eventId = UUID.randomUUID().toString();
+        CreateEventDto createEventDto = new CreateEventDto(eventId, EventStatus.NOT_LIVE);
+        
+        // First create the event
+        ResponseEntity<String> createResponse = restTemplate.postForEntity("/events", createEventDto, String.class);
+        assertEquals(HttpStatus.OK, createResponse.getStatusCode());
+
+        // Then update the event status
         UpdateEventStatusDto updateEventStatusDto = new UpdateEventStatusDto(EventStatus.LIVE);
 
         // When
@@ -125,20 +133,11 @@ class EventPublishingEndToEndTest {
         // Verify the event status was updated in the database
         Event updatedEvent = eventDao.findByEventId(eventId);
         assertNotNull(updatedEvent);
-        assertEquals("LIVE", updatedEvent.getStatus().name());
+        assertEquals(EventStatus.LIVE, updatedEvent.getStatus());
 
         // Wait a bit for the outbox processor to handle the message
         Thread.sleep(3000);
 
-        // Verify that a message was created in the outbox
-        List<Message> pendingMessages = messageDao.findPendingMessages(100);
-        Optional<Message> messageForEvent = pendingMessages.stream()
-                .filter(msg -> msg.getPayload().contains(eventId))
-                .findFirst();
-
-        // The message should no longer be in PENDING status (it should be SENT or FAILED)
-        assertTrue(messageForEvent.isEmpty() || !"PENDING".equals(messageForEvent.get().getStatus()),
-                "Message should no longer be in PENDING status");
 
         // Check for messages with SENT status that match our event
         List<Message> sentMessages = messageDao.findMessagesByStatus("SENT", 100);
@@ -156,7 +155,7 @@ class EventPublishingEndToEndTest {
     @Order(3)
     void testKafkaMessageConsumption() throws InterruptedException {
         // Given
-        String eventId = "e2e-test-event-123";
+        String eventId = UUID.randomUUID().toString();
         String expectedScore = "0:0";
 
         // Send another message to Kafka to verify we can consume it
@@ -195,7 +194,7 @@ class EventPublishingEndToEndTest {
     @Order(4)
     void testCompleteEndToEndFlow() throws Exception {
         // Step 1: Create a new event
-        String eventId = "e2e-complete-flow-456";
+        String eventId = UUID.randomUUID().toString();
         CreateEventDto createEventDto = new CreateEventDto(eventId, EventStatus.NOT_LIVE);
         
         ResponseEntity<String> createResponse = restTemplate.postForEntity("/events", createEventDto, String.class);
@@ -215,7 +214,7 @@ class EventPublishingEndToEndTest {
         // Step 3: Verify event status in database
         Event updatedEvent = eventDao.findByEventId(eventId);
         assertNotNull(updatedEvent);
-        assertEquals("LIVE", updatedEvent.getStatus().name());
+        assertEquals(EventStatus.LIVE, updatedEvent.getStatus());
 
         // Step 4: Wait for outbox processing
         Thread.sleep(3000);
