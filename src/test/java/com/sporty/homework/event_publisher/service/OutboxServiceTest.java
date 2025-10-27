@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sporty.homework.event_publisher.dao.MessageDao;
 import com.sporty.homework.event_publisher.dto.EventScoreMessageDto;
 import com.sporty.homework.event_publisher.model.Message;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -47,10 +50,17 @@ class OutboxServiceTest {
         String currentScore = "1:0";
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
-        // Mock successful Kafka send
+        // Mock successful Kafka send with proper SendResult
+        org.apache.kafka.clients.producer.RecordMetadata mockRecordMetadata = 
+            new org.apache.kafka.clients.producer.RecordMetadata(
+                new org.apache.kafka.common.TopicPartition("test-topic", 0), 
+                0, 0, 0L, null, 0, 0);
+        org.springframework.kafka.support.SendResult<String, String> mockSendResult = 
+            new org.springframework.kafka.support.SendResult<>(null, mockRecordMetadata);
+        CompletableFuture<org.springframework.kafka.support.SendResult<String, String>> successfulFuture = 
+            CompletableFuture.completedFuture(mockSendResult);
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
-                .thenReturn(CompletableFuture.completedFuture(
-                    new org.springframework.kafka.support.SendResult<String, String>(null, null)));
+                .thenReturn(successfulFuture);
 
         // When
         outboxService.saveMessageAndSendToKafka(eventId, currentScore);
@@ -104,9 +114,14 @@ class OutboxServiceTest {
         pendingMessage.setEventType("EVENT_SCORE_UPDATE");
         
         when(messageDao.findPendingMessages(100)).thenReturn(Arrays.asList(pendingMessage));
+        org.apache.kafka.clients.producer.RecordMetadata mockRecordMetadata = 
+            new org.apache.kafka.clients.producer.RecordMetadata(
+                new org.apache.kafka.common.TopicPartition("test-topic", 0), 
+                0, 0, 0L, null, 0, 0);
+        org.springframework.kafka.support.SendResult<String, String> mockSendResult = 
+            new org.springframework.kafka.support.SendResult<>(null, mockRecordMetadata);
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
-                .thenReturn(CompletableFuture.completedFuture(
-                    new org.springframework.kafka.support.SendResult<String, String>(null, null)));
+                .thenReturn(CompletableFuture.completedFuture(mockSendResult));
 
         // When
         outboxService.processPendingMessages();
@@ -126,9 +141,14 @@ class OutboxServiceTest {
         failedMessage.setRetryCount(1);
         
         when(messageDao.findFailedMessages(100)).thenReturn(Arrays.asList(failedMessage));
+        org.apache.kafka.clients.producer.RecordMetadata mockRecordMetadata = 
+            new org.apache.kafka.clients.producer.RecordMetadata(
+                new org.apache.kafka.common.TopicPartition("test-topic", 0), 
+                0, 0, 0L, null, 0, 0);
+        org.springframework.kafka.support.SendResult<String, String> mockSendResult = 
+            new org.springframework.kafka.support.SendResult<>(null, mockRecordMetadata);
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
-                .thenReturn(CompletableFuture.completedFuture(
-                    new org.springframework.kafka.support.SendResult<String, String>(null, null)));
+                .thenReturn(CompletableFuture.completedFuture(mockSendResult));
 
         // When
         outboxService.processPendingMessages();
@@ -145,9 +165,14 @@ class OutboxServiceTest {
         String eventId2 = "event-2";
         String currentScore2 = "1:1";
 
+        org.apache.kafka.clients.producer.RecordMetadata mockRecordMetadata = 
+            new org.apache.kafka.clients.producer.RecordMetadata(
+                new org.apache.kafka.common.TopicPartition("test-topic", 0), 
+                0, 0, 0L, null, 0, 0);
+        org.springframework.kafka.support.SendResult<String, String> mockSendResult = 
+            new org.springframework.kafka.support.SendResult<>(null, mockRecordMetadata);
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
-                .thenReturn(CompletableFuture.completedFuture(
-                    new org.springframework.kafka.support.SendResult<String, String>(null, null)));
+                .thenReturn(CompletableFuture.completedFuture(mockSendResult));
 
         // When
         outboxService.saveMessageAndSendToKafka(eventId1, currentScore1);

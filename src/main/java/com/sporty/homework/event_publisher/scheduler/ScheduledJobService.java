@@ -49,21 +49,25 @@ public class ScheduledJobService {
             try {
                 String url = baseUrl + "/" + eventId + "/score";
                 ResponseEntity<SoccerScoreDto> response = restTemplate.getForEntity(url, SoccerScoreDto.class);
-                SoccerScoreDto scoreDto = response.getBody();
                 
-                // Log the resulting JSON
-                if (scoreDto != null) {
-                    log.info("Score update for event {}: Event ID: {}, Current Score: {}", 
-                        eventId, scoreDto.eventId(), scoreDto.currentScore());
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    SoccerScoreDto scoreDto = response.getBody();
                     
-                    // Send the score to Kafka using outbox pattern
-                    outboxService.saveMessageAndSendToKafka(scoreDto.eventId(), scoreDto.currentScore());
+                    // Validate the response
+                    if (scoreDto != null && isValidSoccerScore(scoreDto)) {
+                        log.info("Score update for event {}: Event ID: {}, Current Score: {}", 
+                            eventId, scoreDto.eventId(), scoreDto.currentScore());
+                        
+                        // Send the score to Kafka using outbox pattern
+                        outboxService.saveMessageAndSendToKafka(scoreDto.eventId(), scoreDto.currentScore());
+                    } else {
+                        log.warn("Invalid score response for event: {}, Response: {}", eventId, scoreDto);
+                    }
                 } else {
-                    log.info("Received null response for event: {}", eventId);
+                    log.error("Soccer server returned error status for event {}: {}", eventId, response.getStatusCode());
                 }
-                
             } catch (Exception e) {
-                log.error("Error calling endpoint for event: {} - {}", eventId, e.getMessage());
+                log.error("Error calling soccer server endpoint for event: {} - {}", eventId, e.getMessage());
             }
         };
 
@@ -100,5 +104,21 @@ public class ScheduledJobService {
             }
         }
         scheduledTasks.clear();
+    }
+    
+    public boolean isValidSoccerScore(SoccerScoreDto scoreDto) {
+        // Validate event ID is not null/empty
+        if (scoreDto.eventId() == null || scoreDto.eventId().trim().isEmpty()) {
+            log.warn("Invalid event ID: {}", scoreDto.eventId());
+            return false;
+        }
+        
+        // Validate score format (should be in format "X:Y" where X and Y are numbers)
+        if (scoreDto.currentScore() == null || !scoreDto.currentScore().matches("^\\d+:\\d+$")) {
+            log.warn("Invalid score format: {}", scoreDto.currentScore());
+            return false;
+        }
+        
+        return true;
     }
 }

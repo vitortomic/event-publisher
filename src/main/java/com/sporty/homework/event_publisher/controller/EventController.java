@@ -32,8 +32,20 @@ public class EventController {
             @PathVariable String eventId,
             @RequestBody UpdateEventStatusDto updateEventStatusDto) {
         
-        eventService.updateEventStatus(eventId, updateEventStatusDto.status());
-        return ResponseEntity.ok(Map.of("message", "Event status updated successfully"));
+        // Validate the status is one of the allowed values
+        if (updateEventStatusDto.status() == null) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Status cannot be null. Allowed values are: LIVE, NOT_LIVE"));
+        }
+        
+        try {
+            // This will throw IllegalArgumentException if not a valid enum value
+            eventService.updateEventStatus(eventId, updateEventStatusDto.status());
+            return ResponseEntity.ok(Map.of("message", "Event status updated successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Invalid status. Allowed values are: LIVE, NOT_LIVE"));
+        }
     }
 
     @GetMapping("/{eventId}")
