@@ -31,4 +31,16 @@ public interface MessageDao {
     @SqlQuery("SELECT * FROM message_outbox WHERE status = 'FAILED' AND retry_count < 5 ORDER BY last_attempt_at ASC LIMIT :limit")
     @RegisterBeanMapper(Message.class)
     List<Message> findFailedMessages(@Bind("limit") int limit);
+    
+    @SqlQuery("SELECT * FROM message_outbox WHERE status = :status ORDER BY created_at ASC LIMIT :limit")
+    @RegisterBeanMapper(Message.class)
+    List<Message> findMessagesByStatus(@Bind("status") String status, @Bind("limit") int limit);
+    
+    @SqlQuery("SELECT * FROM message_outbox WHERE payload LIKE :payloadPattern ORDER BY created_at ASC LIMIT :limit")
+    @RegisterBeanMapper(Message.class)
+    List<Message> findByPayloadContaining(@Bind("payloadPattern") String payloadPattern, @Bind("limit") int limit);
+    
+    @SqlQuery("SELECT * FROM message_outbox ORDER BY created_at ASC LIMIT :limit")
+    @RegisterBeanMapper(Message.class)
+    List<Message> findAllMessages(@Bind("limit") int limit);
 }
