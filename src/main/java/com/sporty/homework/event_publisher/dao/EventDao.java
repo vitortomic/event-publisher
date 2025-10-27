@@ -15,7 +15,7 @@ public interface EventDao {
     @SqlUpdate("UPDATE event SET event_status = :status WHERE event_id = :eventId")
     void updateEventStatus(@Bind("eventId") String eventId, @Bind("status") String status);
 
-    @SqlQuery("SELECT * FROM event WHERE event_id = :eventId")
+    @SqlQuery("SELECT event_id, event_status AS status FROM event WHERE event_id = :eventId")
     @RegisterBeanMapper(Event.class)
     Event findByEventId(@Bind("eventId") String eventId);
 }
