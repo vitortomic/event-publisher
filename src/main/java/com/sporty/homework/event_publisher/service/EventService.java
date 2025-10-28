@@ -22,7 +22,7 @@ public class EventService {
 
     @Transactional
     public void addEvent(CreateEventDto createEventDto) {
-        eventDao.insertEvent(createEventDto.eventId(), createEventDto.status().name());
+        eventDao.insertEvent(createEventDto.eventId(), createEventDto.status());
         
         // If the initial status is LIVE, start the job
         if (createEventDto.status() == EventStatus.LIVE) {
@@ -32,7 +32,7 @@ public class EventService {
 
     @Transactional
     public void updateEventStatus(String eventId, EventStatus status) {
-        eventDao.updateEventStatus(eventId, status.name());
+        eventDao.updateEventStatus(eventId, status);
         
         // Manage the scheduled job based on status
         if (status == EventStatus.LIVE) {
