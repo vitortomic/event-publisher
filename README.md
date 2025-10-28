@@ -154,6 +154,17 @@ The application relies on the following Docker services:
 
 The Docker configuration is located in `ci/docker-compose.yml`.
 
+## Design decisions summary
+
+For database i chose to use a dockerized postgres, using flyway to handle migrations and JDBI for queries.
+For the soccer server i chose node and express since i think they are a great combination for quickly creating mock APIs.
+For scheduling i used the spring task scheduler as well as java scheduled futures and virtual threads for performance.
+For storing of messages i chose jsonb and json serialization, in case tps was very large i would have switched to protobuf instead
+of json string serialization.
+For sending the messages to kafka i chose to use the outbox pattern in order to implement the retry logic.
+For the dao tests i used testcontainers so that all queries can be verified.
+For the kafka and e2e tests i chose to use the actual docker instances.
+
 ## Development log and AI usage
 
 This project was built in an iterative process using qwen-code (https://github.com/QwenLM/qwen-code), a free CLI AI agent.
