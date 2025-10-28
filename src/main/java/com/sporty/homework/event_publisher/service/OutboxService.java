@@ -3,6 +3,7 @@ package com.sporty.homework.event_publisher.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sporty.homework.event_publisher.dao.MessageDao;
 import com.sporty.homework.event_publisher.dto.EventScoreMessageDto;
+import com.sporty.homework.event_publisher.enums.MessageStatus;
 import com.sporty.homework.event_publisher.model.Message;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,9 +49,10 @@ public class OutboxService {
 
             // Create and save the outbox message
             Message outboxMessage = new Message();
+            outboxMessage.setEventId(eventId);
             outboxMessage.setEventType("EVENT_SCORE_UPDATE");
             outboxMessage.setPayload(payload);
-            outboxMessage.setStatus("PENDING");
+            outboxMessage.setStatus(MessageStatus.PENDING);
             outboxMessage.setCreatedAt(LocalDateTime.now());
             outboxMessage.setRetryCount(0);
 
@@ -59,10 +61,10 @@ public class OutboxService {
 
             // Attempt to send to Kafka and update status
             if (sendMessageToKafka(eventId, payload, messageId)) {
-                messageDao.updateMessageStatus(messageId, "SENT", LocalDateTime.now());
+                messageDao.updateMessageStatus(messageId, MessageStatus.SENT, LocalDateTime.now());
                 log.info("Successfully sent message to Kafka and updated status for event: {}", eventId);
             } else {
-                messageDao.markMessageAsFailed(messageId, "FAILED", LocalDateTime.now());
+                messageDao.markMessageAsFailed(messageId, MessageStatus.FAILED, LocalDateTime.now());
                 log.error("Failed to send message to Kafka for event: {}, saved to outbox for retry", eventId);
             }
         } catch (Exception e) {
@@ -89,13 +91,13 @@ public class OutboxService {
 
     public void processPendingMessages() {
         // Process pending messages
-        List<Message> pendingMessages = messageDao.findPendingMessages(100);
+        List<Message> pendingMessages = messageDao.findPendingMessages();
         for (Message message : pendingMessages) {
             processMessage(message);
         }
 
         // Process failed messages (with retry logic)
-        List<Message> failedMessages = messageDao.findFailedMessages(100);
+        List<Message> failedMessages = messageDao.findFailedMessages();
         for (Message message : failedMessages) {
             processMessage(message);
         }
@@ -104,17 +106,17 @@ public class OutboxService {
     private void processMessage(Message message) {
         try {
             if (sendMessageToKafka(extractEventId(message.getPayload()), message.getPayload(), message.getId())) {
-                messageDao.updateMessageStatus(message.getId(), "SENT", LocalDateTime.now());
+                messageDao.updateMessageStatus(message.getId(), MessageStatus.SENT, LocalDateTime.now());
                 log.info("Successfully sent previously failed message to Kafka with ID: {}", message.getId());
             } else {
                 // Check retry count and update accordingly
                 if (message.getRetryCount() < 5) { // Max 5 retries
-                    messageDao.markMessageAsFailed(message.getId(), "FAILED", LocalDateTime.now());
+                    messageDao.markMessageAsFailed(message.getId(), MessageStatus.FAILED, LocalDateTime.now());
                     log.warn("Failed to send message to Kafka after retry, ID: {}, retry count: {}", 
                              message.getId(), message.getRetryCount() + 1);
                 } else {
                     // Mark as permanently failed after max retries
-                    messageDao.updateMessageStatus(message.getId(), "PERMANENTLY_FAILED", LocalDateTime.now());
+                    messageDao.updateMessageStatus(message.getId(), MessageStatus.PERMANENTLY_FAILED, LocalDateTime.now());
                     log.error("Message permanently failed after max retries, ID: {}", message.getId());
                 }
             }
@@ -122,9 +124,9 @@ public class OutboxService {
             log.error("Error processing message with ID: {}", message.getId(), e);
             // Check retry count before incrementing
             if (message.getRetryCount() < 5) {
-                messageDao.markMessageAsFailed(message.getId(), "FAILED", LocalDateTime.now());
+                messageDao.markMessageAsFailed(message.getId(), MessageStatus.FAILED, LocalDateTime.now());
             } else {
-                messageDao.updateMessageStatus(message.getId(), "PERMANENTLY_FAILED", LocalDateTime.now());
+                messageDao.updateMessageStatus(message.getId(), MessageStatus.PERMANENTLY_FAILED, LocalDateTime.now());
             }
         }
     }
