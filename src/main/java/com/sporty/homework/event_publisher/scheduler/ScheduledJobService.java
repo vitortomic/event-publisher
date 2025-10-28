@@ -16,6 +16,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 
 @Slf4j
@@ -23,6 +25,7 @@ import java.util.concurrent.ScheduledFuture;
 public class ScheduledJobService {
 
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
+    private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final TaskScheduler taskScheduler;
     private final RestTemplate restTemplate = new RestTemplate();
     private final OutboxService outboxService;
@@ -34,7 +37,7 @@ public class ScheduledJobService {
     public ScheduledJobService(OutboxService outboxService) {
         this.outboxService = outboxService;
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(10);
+        scheduler.setPoolSize(2);
         scheduler.setThreadNamePrefix(THREAD_NAME_PREFIX);
         scheduler.initialize();
         this.taskScheduler = scheduler;
@@ -73,7 +76,7 @@ public class ScheduledJobService {
 
         // Schedule the task to run every 10 seconds
         ScheduledFuture<?> scheduledTask = taskScheduler.scheduleAtFixedRate(
-            task,
+            () -> virtualThreadExecutor.submit(task),
             Instant.now().plusSeconds(1), // Start after 1 second
             Duration.ofMillis(10000) // Every 10 seconds
         );
