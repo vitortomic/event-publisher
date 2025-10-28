@@ -30,8 +30,14 @@ The following software must be installed on your system:
 
 The easiest way to run the complete application is using the provided start script:
 
+For Unix-like systems (Linux, macOS):
 ```bash
 ./scripts/start.sh
+```
+
+For Windows:
+```cmd
+scripts\start.bat
 ```
 
 This script will:

@@ -160,3 +160,10 @@ Started with the Qwen Code context. Explored both xeep-api and event-publisher p
 - Verified that successful sends after retries properly mark messages as SENT
 - Tested timeout and execution exception scenarios to ensure messages are properly marked as FAILED
 - Used proper mocking of Kafka SendResult with RecordMetadata to simulate successful sends
+
+## 20. Windows Batch Script
+- Created start.bat to start the complete event-publisher system on Windows
+- Added compatibility with Windows command prompt and path handling
+- Included dependency checks for docker, npm, mvn, and java
+- Used Windows-specific commands for process management
+- Created README.md in scripts directory documenting both start.sh and start.bat
