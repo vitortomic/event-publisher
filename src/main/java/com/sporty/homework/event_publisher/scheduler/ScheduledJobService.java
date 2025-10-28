@@ -25,7 +25,7 @@ import java.util.concurrent.ScheduledFuture;
 public class ScheduledJobService {
 
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
-    private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService virtualThreadExecutor;
     private final TaskScheduler taskScheduler;
     private final RestTemplate restTemplate = new RestTemplate();
     private final OutboxService outboxService;
@@ -35,7 +35,7 @@ public class ScheduledJobService {
     private String baseUrl;
 
     @Value("${polling.interval:10000}") // Default to 10 seconds
-    private long pollingIntervalInMilliseconds;
+    private int pollingIntervalInMilliseconds;
 
     public ScheduledJobService(OutboxService outboxService) {
         this.outboxService = outboxService;
@@ -44,6 +44,7 @@ public class ScheduledJobService {
         scheduler.setThreadNamePrefix(THREAD_NAME_PREFIX);
         scheduler.initialize();
         this.taskScheduler = scheduler;
+        this.virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     public void startJob(String eventId) {
@@ -77,11 +78,13 @@ public class ScheduledJobService {
             }
         };
 
+        Runnable virtualTask = () -> virtualThreadExecutor.submit(task);
+
         // Schedule the task to run every 10 seconds
         ScheduledFuture<?> scheduledTask = taskScheduler.scheduleAtFixedRate(
-            () -> virtualThreadExecutor.submit(task),
+            virtualTask,
             Instant.now().plusSeconds(1), // Start after 1 second
-            Duration.ofMillis(pollingIntervalInMilliseconds) // Every 10 seconds
+                Duration.ofMillis(pollingIntervalInMilliseconds) // Every 10 seconds
         );
 
         scheduledTasks.put(eventId, scheduledTask);
@@ -110,6 +113,7 @@ public class ScheduledJobService {
             }
         }
         scheduledTasks.clear();
+        virtualThreadExecutor.shutdown();
     }
     
     public boolean isValidSoccerScore(SoccerScoreDto scoreDto) {
