@@ -3,6 +3,7 @@ package com.sporty.homework.event_publisher.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sporty.homework.event_publisher.dao.MessageDao;
 import com.sporty.homework.event_publisher.dto.EventScoreMessageDto;
+import com.sporty.homework.event_publisher.enums.MessageStatus;
 import com.sporty.homework.event_publisher.model.Message;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -69,12 +70,12 @@ class OutboxServiceTest {
         verify(messageDao).insertMessage(messageCaptor.capture());
         Message savedMessage = messageCaptor.getValue();
         assertEquals("EVENT_SCORE_UPDATE", savedMessage.getEventType());
-        assertEquals("PENDING", savedMessage.getStatus());
+        assertEquals(MessageStatus.PENDING, savedMessage.getStatus());
         assertTrue(savedMessage.getCreatedAt() != null);
 
         // Verify Kafka was called and status was updated to SENT
         verify(kafkaTemplate).send(eq("event-scores"), eq(eventId), anyString());
-        verify(messageDao).updateMessageStatus(anyLong(), eq("SENT"), any(LocalDateTime.class));
+        verify(messageDao).updateMessageStatus(anyLong(), eq(MessageStatus.SENT), any(LocalDateTime.class));
     }
 
     @Test
@@ -98,11 +99,11 @@ class OutboxServiceTest {
         verify(messageDao).insertMessage(messageCaptor.capture());
         Message savedMessage = messageCaptor.getValue();
         assertEquals("EVENT_SCORE_UPDATE", savedMessage.getEventType());
-        assertEquals("PENDING", savedMessage.getStatus());
+        assertEquals(MessageStatus.PENDING, savedMessage.getStatus());
 
         // Verify Kafka was called and status was marked as FAILED
         verify(kafkaTemplate).send(eq("event-scores"), eq(eventId), anyString());
-        verify(messageDao).markMessageAsFailed(anyLong(), eq("FAILED"), any(LocalDateTime.class));
+        verify(messageDao).markMessageAsFailed(anyLong(), eq(MessageStatus.FAILED), any(LocalDateTime.class));
     }
 
     @Test
@@ -113,7 +114,7 @@ class OutboxServiceTest {
         pendingMessage.setPayload("{\"eventId\":\"event-123\",\"currentScore\":\"2:1\"}");
         pendingMessage.setEventType("EVENT_SCORE_UPDATE");
         
-        when(messageDao.findPendingMessages(100)).thenReturn(Arrays.asList(pendingMessage));
+        when(messageDao.findPendingMessages()).thenReturn(Arrays.asList(pendingMessage));
         org.apache.kafka.clients.producer.RecordMetadata mockRecordMetadata = 
             new org.apache.kafka.clients.producer.RecordMetadata(
                 new org.apache.kafka.common.TopicPartition("test-topic", 0), 
@@ -127,7 +128,7 @@ class OutboxServiceTest {
         outboxService.processPendingMessages();
 
         // Then
-        verify(messageDao).updateMessageStatus(eq(1L), eq("SENT"), any(LocalDateTime.class));
+        verify(messageDao).updateMessageStatus(eq(1L), eq(MessageStatus.SENT), any(LocalDateTime.class));
     }
 
     @Test
@@ -137,10 +138,10 @@ class OutboxServiceTest {
         failedMessage.setId(2L);
         failedMessage.setPayload("{\"eventId\":\"event-456\",\"currentScore\":\"0:0\"}");
         failedMessage.setEventType("EVENT_SCORE_UPDATE");
-        failedMessage.setStatus("FAILED");
+        failedMessage.setStatus(MessageStatus.FAILED);
         failedMessage.setRetryCount(1);
         
-        when(messageDao.findFailedMessages(100)).thenReturn(Arrays.asList(failedMessage));
+        when(messageDao.findFailedMessages()).thenReturn(Arrays.asList(failedMessage));
         org.apache.kafka.clients.producer.RecordMetadata mockRecordMetadata = 
             new org.apache.kafka.clients.producer.RecordMetadata(
                 new org.apache.kafka.common.TopicPartition("test-topic", 0), 
@@ -154,7 +155,7 @@ class OutboxServiceTest {
         outboxService.processPendingMessages();
 
         // Then
-        verify(messageDao).updateMessageStatus(eq(2L), eq("SENT"), any(LocalDateTime.class));
+        verify(messageDao).updateMessageStatus(eq(2L), eq(MessageStatus.SENT), any(LocalDateTime.class));
     }
 
     @Test
@@ -180,7 +181,7 @@ class OutboxServiceTest {
 
         // Then
         verify(messageDao, times(2)).insertMessage(any(Message.class));
-        verify(messageDao, times(2)).updateMessageStatus(anyLong(), eq("SENT"), any(LocalDateTime.class));
+        verify(messageDao, times(2)).updateMessageStatus(anyLong(), eq(MessageStatus.SENT), any(LocalDateTime.class));
     }
 
     @Test
@@ -198,6 +199,6 @@ class OutboxServiceTest {
 
         // Then
         verify(messageDao).insertMessage(any(Message.class));
-        verify(messageDao).markMessageAsFailed(anyLong(), eq("FAILED"), any(LocalDateTime.class));
+        verify(messageDao).markMessageAsFailed(anyLong(), eq(MessageStatus.FAILED), any(LocalDateTime.class));
     }
 }

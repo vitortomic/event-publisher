@@ -3,6 +3,7 @@ package com.sporty.homework.event_publisher.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sporty.homework.event_publisher.dao.MessageDao;
 import com.sporty.homework.event_publisher.dto.EventScoreMessageDto;
+import com.sporty.homework.event_publisher.enums.MessageStatus;
 import com.sporty.homework.event_publisher.model.Message;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -120,10 +121,10 @@ class OutboxServiceEdgeCaseTest {
         failedMessage.setId(1L);
         failedMessage.setPayload("{\"eventId\":\"event-123\",\"currentScore\":\"2:1\"}");
         failedMessage.setEventType("EVENT_SCORE_UPDATE");
-        failedMessage.setStatus("FAILED");
+        failedMessage.setStatus(MessageStatus.FAILED);
         failedMessage.setRetryCount(5); // At max retry count
         
-        when(messageDao.findFailedMessages(100)).thenReturn(Arrays.asList(failedMessage));
+        when(messageDao.findFailedMessages()).thenReturn(Arrays.asList(failedMessage));
         CompletableFuture<org.springframework.kafka.support.SendResult<String, String>> failedFuture = new CompletableFuture<>();
         RuntimeException exception = new RuntimeException("Kafka connection failed");
         failedFuture.completeExceptionally(exception);
@@ -134,7 +135,7 @@ class OutboxServiceEdgeCaseTest {
         outboxService.processPendingMessages();
 
         // Then
-        verify(messageDao).updateMessageStatus(eq(1L), eq("PERMANENTLY_FAILED"), any(LocalDateTime.class));
+        verify(messageDao).updateMessageStatus(eq(1L), eq(MessageStatus.PERMANENTLY_FAILED), any(LocalDateTime.class));
     }
 
     @Test
@@ -144,10 +145,10 @@ class OutboxServiceEdgeCaseTest {
         failedMessage.setId(2L);
         failedMessage.setPayload("{\"eventId\":\"event-456\",\"currentScore\":\"0:0\"}");
         failedMessage.setEventType("EVENT_SCORE_UPDATE");
-        failedMessage.setStatus("FAILED");
+        failedMessage.setStatus(MessageStatus.FAILED);
         failedMessage.setRetryCount(6); // Beyond max retry count
         
-        when(messageDao.findFailedMessages(100)).thenReturn(Arrays.asList(failedMessage));
+        when(messageDao.findFailedMessages()).thenReturn(Arrays.asList(failedMessage));
         CompletableFuture<org.springframework.kafka.support.SendResult<String, String>> failedFuture = new CompletableFuture<>();
         RuntimeException exception = new RuntimeException("Kafka connection failed");
         failedFuture.completeExceptionally(exception);
@@ -158,6 +159,6 @@ class OutboxServiceEdgeCaseTest {
         outboxService.processPendingMessages();
 
         // Then
-        verify(messageDao).updateMessageStatus(eq(2L), eq("PERMANENTLY_FAILED"), any(LocalDateTime.class));
+        verify(messageDao).updateMessageStatus(eq(2L), eq(MessageStatus.PERMANENTLY_FAILED), any(LocalDateTime.class));
     }
 }
