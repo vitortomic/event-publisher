@@ -44,3 +44,6 @@ and kafka
 next step is to implement the message model and table. use the outbox pattern when 
 sending the messages to kafka, ensuring a retry logic to send unsent messages in case 
 there is some crash or failiure
+
+create functional test for dao queries using testcontainers, make sure to configure mvn so that functional tests are skipped
+on maven install and test.
