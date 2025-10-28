@@ -1,5 +1,6 @@
 package com.sporty.homework.event_publisher.dao;
 
+import com.sporty.homework.event_publisher.enums.EventStatus;
 import com.sporty.homework.event_publisher.model.Event;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +37,7 @@ class EventDaoFunctionalTest {
     @Test
     void testInsertEvent() {
         String eventId = "event-123";
-        String status = "LIVE";
+        EventStatus status = EventStatus.LIVE;
 
         // Insert the event
         eventDao.insertEvent(eventId, status);
@@ -45,14 +46,14 @@ class EventDaoFunctionalTest {
         Event foundEvent = eventDao.findByEventId(eventId);
         assertNotNull(foundEvent);
         assertEquals(eventId, foundEvent.getEventId());
-        assertEquals(status, foundEvent.getStatus().name()); // Convert enum to string for comparison
+        assertEquals(status, foundEvent.getStatus()); // Convert enum to string for comparison
     }
 
     @Test
     void testUpdateEventStatus() {
         String eventId = "event-456";
-        String initialStatus = "NOT_LIVE";
-        String updatedStatus = "LIVE";
+        EventStatus initialStatus = EventStatus.NOT_LIVE;
+        EventStatus updatedStatus = EventStatus.LIVE;
 
         // Insert the event with initial status
         eventDao.insertEvent(eventId, initialStatus);
@@ -60,7 +61,7 @@ class EventDaoFunctionalTest {
         // Verify initial status
         Event foundEvent = eventDao.findByEventId(eventId);
         assertNotNull(foundEvent);
-        assertEquals(initialStatus, foundEvent.getStatus().name()); // Convert enum to string for comparison
+        assertEquals(initialStatus, foundEvent.getStatus()); // Convert enum to string for comparison
 
         // Update the event status
         eventDao.updateEventStatus(eventId, updatedStatus);
@@ -68,15 +69,15 @@ class EventDaoFunctionalTest {
         // Verify the status was updated
         Event updatedEvent = eventDao.findByEventId(eventId);
         assertNotNull(updatedEvent);
-        assertEquals(updatedStatus, updatedEvent.getStatus().name()); // Convert enum to string for comparison
+        assertEquals(updatedStatus, updatedEvent.getStatus()); // Convert enum to string for comparison
     }
 
     @Test
     void testFindByEventId() {
         String eventId1 = "event-789";
         String eventId2 = "event-abc";
-        String status1 = "LIVE";
-        String status2 = "NOT_LIVE";
+        EventStatus status1 = EventStatus.LIVE;
+        EventStatus status2 = EventStatus.NOT_LIVE;
 
         // Insert two events with valid statuses
         eventDao.insertEvent(eventId1, status1);
@@ -86,13 +87,13 @@ class EventDaoFunctionalTest {
         Event foundEvent1 = eventDao.findByEventId(eventId1);
         assertNotNull(foundEvent1);
         assertEquals(eventId1, foundEvent1.getEventId());
-        assertEquals(status1, foundEvent1.getStatus().name()); // Convert enum to string for comparison
+        assertEquals(status1, foundEvent1.getStatus()); // Convert enum to string for comparison
 
         // Find the second event
         Event foundEvent2 = eventDao.findByEventId(eventId2);
         assertNotNull(foundEvent2);
         assertEquals(eventId2, foundEvent2.getEventId());
-        assertEquals(status2, foundEvent2.getStatus().name()); // Convert enum to string for comparison
+        assertEquals(status2, foundEvent2.getStatus()); // Convert enum to string for comparison
 
         // Try to find a non-existent event
         Event nonExistentEvent = eventDao.findByEventId("non-existent");
