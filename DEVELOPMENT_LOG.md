@@ -151,3 +151,12 @@ Started with the Qwen Code context. Explored both xeep-api and event-publisher p
 - Added curl command examples for testing the API
 - Detailed prerequisites (Java, Maven, Node.js, Docker)
 - Documented test execution procedures (mvn test vs mvn verify)
+
+## 19. Outbox Retry and Failure Testing
+- Created OutboxServiceRetryTest to specifically test retry and failure logic
+- Tests cover scenarios where messages fail to send to Kafka, are retried, and eventually marked as permanently failed
+- Validated the retry mechanism correctly increments retry counts up to max retries (5)
+- Confirmed messages are marked as PERMANENTLY_FAILED after max retries are exhausted
+- Verified that successful sends after retries properly mark messages as SENT
+- Tested timeout and execution exception scenarios to ensure messages are properly marked as FAILED
+- Used proper mocking of Kafka SendResult with RecordMetadata to simulate successful sends
