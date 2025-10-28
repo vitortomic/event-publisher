@@ -93,6 +93,14 @@ If you prefer to run the components individually, follow these steps:
      -d '{"eventId": "match-1", "status": "NOT_LIVE"}'
    ```
 
+### Verification
+
+If an event is in LIVE status, the messages will be saved to the message_outbox table, where they can be queried.
+If you want to see kafka messages i recommend installing and using kcat.
+
+kcat -b localhost:9092 -t event-scores -C
+
+
 ### To Stop the Application
 
 To stop all services:
@@ -222,4 +230,5 @@ I used this project as an opportunity to evaluate usage of AI agents in quick pr
 I was pleasantly surprised with how quick and seamless the process can be, however a lot of effort is needed to verify
 and fix issues, and this effort starts growing exponentially as the project size grows. Therefore, it is my opinion that
 AI agents are best used in experimenting and prototyping, with strict oversight and with certain design decisions forced
-by the developer himself.x  
+by the developer.
+
