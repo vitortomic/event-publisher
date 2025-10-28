@@ -34,9 +34,6 @@ public class ScheduledJobService {
     @Value("${score.endpoint.url:http://localhost:8081}")
     private String baseUrl;
 
-    @Value("${polling.interval:10000}") // Default to 10 seconds
-    private int pollingIntervalInMilliseconds;
-
     public ScheduledJobService(OutboxService outboxService) {
         this.outboxService = outboxService;
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
@@ -84,7 +81,7 @@ public class ScheduledJobService {
         ScheduledFuture<?> scheduledTask = taskScheduler.scheduleAtFixedRate(
             virtualTask,
             Instant.now().plusSeconds(1), // Start after 1 second
-                Duration.ofMillis(pollingIntervalInMilliseconds) // Every 10 seconds
+                Duration.ofMillis(10000) // Every 10 seconds
         );
 
         scheduledTasks.put(eventId, scheduledTask);
