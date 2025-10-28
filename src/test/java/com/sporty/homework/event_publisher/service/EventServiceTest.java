@@ -43,7 +43,7 @@ class EventServiceTest {
         eventService.addEvent(createEventDto);
 
         // Then
-        verify(eventDao).insertEvent(eq("event-123"), eq("LIVE"));
+        verify(eventDao).insertEvent(eq("event-123"), eq(EventStatus.LIVE));
     }
 
     @Test
@@ -80,7 +80,7 @@ class EventServiceTest {
         eventService.updateEventStatus(eventId, newStatus);
 
         // Then
-        verify(eventDao).updateEventStatus(eq("event-123"), eq("NOT_LIVE"));
+        verify(eventDao).updateEventStatus(eq("event-123"), eq(EventStatus.NOT_LIVE));
     }
 
     @Test
