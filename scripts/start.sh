@@ -72,6 +72,7 @@ fi
 cd "$SOCCER_SERVER_DIR"
 echo "Navigated to: $(pwd)"
 
+npm install > npm-install.log 2>&1 &
 echo "Starting soccer server in detached mode..."                                 │
 nohup npm start > soccer-server.log 2>&1 &
 
